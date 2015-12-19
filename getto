@@ -1,0 +1,116 @@
+#!/usr/bin/env php
+<?php
+# version
+define("VERSION",             "1.0.0");
+# text stuff
+define("TEXT_RESET",          "\e[0m");
+define("TEXT_BOLD",           "\e[1m");
+define("TEXT_COLOR_RED",      "\e[0;31m");
+define("TEXT_COLOR_GREEN",    "\e[0;32m");
+define("TEXT_COLOR_YELLOW",   "\e[0;33m");
+
+# header
+_print(TEXT_BOLD);
+_print("***********************************\n");
+_print("*** Getto [PHP Package Manager] ***\n");
+_print("***********************************\n\n");
+_print(TEXT_RESET);
+
+if (PHP_SAPI != "cli") {
+    _print_fail("Use only in CLI!\n", 1);
+}
+
+$args_map = array(
+    "-i" => array("--install",
+        "options" => array("--version", "--all")),
+    "-r" => array("--remove",
+        "options" => array("--version", "--all")),
+    "-c" => array("--check",
+        "options" => array("--all", "--self")),
+    "-u" => array("--update",
+        "options" => array("--all", "--self")),
+    "-h" => array("--help"),
+    "-v" => array("--version"),
+);
+
+$argc = getto_argc();
+if ($argc < 2) {
+    _print_fail("No enough arguments given!\n", 1);
+}
+
+$output = "";
+switch (getto_argv(1)) {
+    case "-h":
+    case "--help":
+        $output = getto_run_help();
+        break;
+    case "-v":
+    case "-version":
+        $output = getto_run_version();
+        break;
+    default:
+        // help
+}
+
+_print($output);
+
+# arg stuff
+function getto_argc() {
+    if (isset($GLOBALS["argc"])) {
+        return $GLOBALS["argc"];
+    }
+    return 0;
+}
+function getto_argv($i) {
+    if (isset($GLOBALS["argv"][$i])) {
+        return $GLOBALS["argv"][$i];
+    }
+    return null;
+}
+
+# run stuff
+function getto_run_help() {
+    $output = <<<OUTPUT
+Usage: getto -option [, --extra-option]
+       getto -option [, library [, --sub-option]] [, --extra-option]
+OUTPUT;
+    _print("{$output}\n");
+}
+function getto_run_version() {
+    _print("Version: ". VERSION ."\n");
+}
+
+# https://github.com/slimphp/Slim/archive/3.x.zip
+# https://github.com/qeremy/tiriviri/archive/master.zip
+function gett_zip_get($url) {
+    $ch = curl_init($url);
+    curl_setopt($ch, CURLOPT_HEADER, 1);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
+    curl_setopt($ch, CURLOPT_USERAGENT, "Getto/v1.0");
+    $res = curl_exec($ch);
+    curl_close($ch);
+    return $res;
+}
+function gett_zip_extract($zip) {}
+
+
+# printers
+function _print($arg) {
+    fwrite(STDOUT, print_r($arg, true));
+}
+function _printn($arg) {
+    _print("{$arg}\n");
+}
+function _printa(...$args) {
+    $form = "";
+    foreach ($args as $_) {
+        $form .= "%s ";
+    }
+    _print(vsprintf($form, $args));
+}
+function _print_fail($arg, $enum = -1) {
+    _print(TEXT_COLOR_RED ."Fail: {$arg}". TEXT_RESET);
+    if ($enum > -1) {
+        exit($enum);
+    }
+}
