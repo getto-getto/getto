@@ -1,0 +1,6 @@
+@import
+    name      = qeremy/router
+    link      = github.com
+    version   = master
+    config    = composer.json
+    # depends.0 =
