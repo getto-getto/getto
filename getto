@@ -38,21 +38,18 @@ if ($argc < 2) {
     _print_fail("No enough arguments given!\n", 1);
 }
 
-$output = "";
 switch (getto_argv(1)) {
     case "-h":
     case "--help":
-        $output = getto_run_help();
+        getto_run_help();
         break;
     case "-v":
     case "-version":
-        $output = getto_run_version();
+        getto_run_version();
         break;
     default:
         // help
 }
-
-_print($output);
 
 # arg stuff
 function getto_argc() {
@@ -78,18 +75,20 @@ function getto_run_version() {
     _print("
 Version: ". VERSION ."\n");
 }
+function getto_run_install() {}
 
 # https://github.com/<NAMESPACE>/<NAME>/archive/<BRANCH [master, 3.1.0, ...]>.zip
-function gett_zip_get($url) {
+function getto_zip_get($url) {
     $ch = curl_init($url);
-    curl_setopt($ch, CURLOPT_HEADER, 1);
+    // $fp =
+    curl_setopt($ch, CURLOPT_HEADER, $fp);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1);
     curl_setopt($ch, CURLOPT_USERAGENT, "Getto/v1.0");
     $res = curl_exec($ch);
     curl_close($ch);
     return $res;
 }
-function gett_zip_extract($zip) {}
+function getto_zip_extract($zip) {}
 
 
 # printers
