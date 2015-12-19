@@ -178,7 +178,7 @@ function getto_install_package_all() {
     if ($config == "composer.json") { # remove this control, automatize
         $config_url = getto_remote_url($link, "conf", $name, "composer.json");
         $config_file = getto_remote_conf($config_url);
-        if ($config_file != "") {
+        if ($config_file != null) {
             $config = getto_conf_parse($config_file);
             if (empty($config)) {
                 _print_fail("Could not get composer.json from %s\n", -1, $name);
