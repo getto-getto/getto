@@ -241,26 +241,63 @@ function getto_conf_parse_file($file) {
     if (!is_file($file)) {
         _print_fail("Configration file not found! file: '%s'.\n", 1, $file);
     }
+    $_key = function($key) { return trim($key, " @[]{}"); };
+    $_value = function($value) { return trim($value, " \"\',"); };
+    $_key_value = function($key, $value) use($_key, $_value) {
+        $key_ending = substr($key, -2);
+        $key = $_key($key);
+        $value = $_value($value);
+        $value_char_first = $value[0];
+        $value_char_last = substr($value, -1);
+        if ($key_ending == "[]" || $key_ending == "{}") {
+            $json = "";
+            if ($value_char_first != "[") {
+                $json .= "\"";
+            }
+            $json .= $value;
+            if ($value_char_last != "]" && $value_char_last != "}"
+                && !is_numeric($value_char_last)
+                && !in_array(substr($value, -4), array("null","true","false"))
+                && !in_array(substr($value, -5), array("false"))
+            ) {
+                $json .= "\"";
+            }
+            $value = ($key_ending == "[]")
+                ? json_decode("[{$json}]", true)
+                : json_decode("{{$json}}", true);
+        }
+        return array($key, $value);
+    };
     $conf = array();
     $lines = getto_conf_parse_file_lines($file);
     $lines_length = count($lines);
     foreach ($lines as $i => $line) {
         if ($line[0] == "@") {
+            $conf_i = 0;
+            $conf_key = $_key($line);
+            $conf_array = false;
             if (substr($line, -2) == "[]") {
-                $conf_i = 0;
-                $conf_key = trim($line, "@[]");
+                $conf_array = true;
                 if (!isset($conf[$conf_key][$conf_i])) {
                     $conf[$conf_key][$conf_i] = array();
                 }
-            }
+            } else {}
             for ($ii = $i + 1; $line_next =@ $lines[$ii]; $ii++) {
                 if ($line_next[0] == "@") {
                     break;
                 }
+                if ($line_next[0] == "-") {
+                    $conf_i++;
+                }
                 @list($key, $value) =
                     array_map("trim", explode("=", $line_next, 2));
                 if (isset($key, $value)) {
-                    $conf[$conf_key][$conf_i][$key] = trim($value, "\"'");
+                    list($key, $value) = $_key_value($key, $value);
+                    if (!$conf_array) {
+                        $conf[$conf_key][$key] = $value;
+                    } else {
+                        $conf[$conf_key][$conf_i][$key] = $value;
+                    }
                 }
             }
             $conf_i++;
