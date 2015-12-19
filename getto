@@ -1,5 +1,7 @@
 #!/usr/bin/env php
 <?php
+# root
+define('ROOT', getcwd());
 # version
 define("VERSION",             "1.0.0");
 # text styles
@@ -13,25 +15,12 @@ define("TEXT_COLOR_YELLOW",   "\e[0;33m");
 _print(TEXT_BOLD);
 _print("***********************************\n");
 _print("*** Getto [PHP Package Manager] ***\n");
-_print("***********************************\n\n");
+_print("***********************************\n");
 _print(TEXT_RESET);
 
 if (PHP_SAPI != "cli") {
     _print_fail("Use only in CLI!\n", 1);
 }
-
-$args_map = array(
-    "-i" => array("--install",
-        "options" => array("@src", "--version", "--all")),
-    "-r" => array("--remove",
-        "options" => array("@src", "--version", "--all")),
-    "-c" => array("--check",
-        "options" => array("@src", "--all", "--self")),
-    "-u" => array("--update",
-        "options" => array("@src", "--all", "--self")),
-    "-h" => array("--help"),
-    "-v" => array("--version"),
-);
 
 $argc = getto_argc();
 if ($argc < 2) {
@@ -72,12 +61,39 @@ function getto_argv($i) {
 # run stuff
 function getto_run_help() {
     _print("
-Usage: getto -option [, --extra-option]
-       getto -option [, library [, --sub-option]] [, --extra-option]\n");
+--- Usage
+    getto -option [--extra-option]
+    getto -option [@package [-sub-option 'value']] | [--extra-option]
+
+--- Options
+    -i, --install   Install (a, all) package(s).
+    -c, --check     Check (a, all) package(s) for newer version(s).
+    -u, --update    Update (a, all) package(s).
+    -r, --remove    Update a package.
+    -h, --help      Display help.
+    -v, --version   Print version.
+
+--- Examples
+    # install
+    getto -i --all
+    getto -i phpunit/phpunit
+    getto -i phpunit/phpunit -v '3.0'
+    # check
+    getto -c --all
+    getto -c --self
+    getto -c phpunit/phpunit
+    # update
+    getto -u --all
+    getto -u --self
+    getto -u phpunit/phpunit
+    # remove
+    getto -r phpunit/phpunit
+");
 }
 function getto_run_version() {
     _print("
-Version: ". VERSION ."\n");
+Version: ". VERSION ."
+");
 }
 function getto_run_install() {}
 
@@ -85,15 +101,14 @@ function getto_run_install() {}
 function getto_zip_get($url) {}
 function getto_zip_extract($zip) {}
 
-
 # printers
 function _print($arg) {
     fwrite(STDOUT, print_r($arg, true));
 }
 function _printn($arg) {
-    _print("{$arg}\n");
+    fwrite(STDOUT, print_r($arg, true) ."\n");
 }
-function _printa(...$args) {
+function _printr(...$args) {
     $form = "";
     foreach ($args as $_) {
         $form .= "%s ";
