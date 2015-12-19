@@ -80,8 +80,7 @@ function getto_run_version() {
     _print("Version: ". VERSION ."\n");
 }
 
-# https://github.com/slimphp/Slim/archive/3.x.zip
-# https://github.com/qeremy/tiriviri/archive/master.zip
+# https://github.com/<NAMESPACE>/<NAME>/archive/<BRANCH [master, 3.1.0, ...]>.zip
 function gett_zip_get($url) {
     $ch = curl_init($url);
     curl_setopt($ch, CURLOPT_HEADER, 1);
