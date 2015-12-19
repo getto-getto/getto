@@ -1,0 +1,26 @@
+@project
+    name        = Getto!
+    version     = 1.0.0
+    description = Lorem ipsum dolor
+    labels[]    = "lorem", "ipsum", "dolor"
+    extras{}    = "hello": "world...", "array": [1,2,3]
+@depend
+    php       = 5.3.0
+    php-curl  = *
+@author[]
+    name      = Kerem Güneş
+    mail      = qeremy@gmail.com
+    link      = http://github.com/qeremy
+@import[]
+    # required fields
+    name      = qeremy/router
+    link      = github.com
+    # optional fields
+    version   = master
+    config    = composer.json
+    # sub-array seperator
+    -
+    name      = qeremy/couch
+    link      = github.com
+    version   = master
+    config    = composer.json
