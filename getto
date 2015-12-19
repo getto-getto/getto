@@ -30,6 +30,7 @@ if (PHP_SAPI != "cli") {
 # conf
 static $CONF = array();
 static $CONF_FILE = ROOT ."/getto.conf";
+static $CONF_LOCK_FILE = ROOT ."/getto.conf.lock";
 # args
 static $ARGV = array();
 static $ARGC = 0;
@@ -84,9 +85,9 @@ function getto_argv($i) {
 function getto_run_install() {
     $package = getto_argv("i");
     if ($package != "--all") {
-        return getto_install_package($package);
+        return getto_package_install($package);
     }
-    return getto_install_package_all();
+    return getto_package_install_all();
 }
 function getto_run_help() {
     _print("
@@ -166,17 +167,21 @@ function getto_remote_zip_get($url) {
 }
 function getto_remote_zip_extract($zip) {}
 
-function getto_install_package($name) {
+function getto_package_install($name) {
     var_dump($name);
 }
-function getto_install_package_all() {
+function getto_package_install_all() {
     $conf = getto_conf_parse_local();
-    # put foreach here and call in getto_install_package()
-    $name = _dig($conf, "@import.name");
-    $link = _dig($conf, "@import.link");
-    $config = _dig($conf, "@import.config");
+    _print($conf);
+    return;
+    # put foreach here and call in getto_package_install()
+    $name = _dig($conf, "import.name");
+    $link = _dig($conf, "import.link");
+    $config = _dig($conf, "import.config");
+    $version = _dig($conf, "import.version", "master");
     if ($config == "composer.json") { # remove this control, automatize
         $config_url = getto_remote_url($link, "conf", $name, "composer.json");
+        _print_success("Getting remove configration from '%s'...\n", $config_url);
         $config_file = getto_remote_conf($config_url);
         if ($config_file != null) {
             $config = getto_conf_parse($config_file);
@@ -184,11 +189,28 @@ function getto_install_package_all() {
                 _print_fail("Could not get composer.json from %s\n", -1, $name);
                 _print_fail("Skipping...\n");
             }
-            var_dump($config);
+            $info = getto_package_installed_info($name);
+            if ($version = _dig($info, "import.version")) {
+                _print_none("Installed version of %s is '%s'.\n", $name, $version);
+            } else {
+                _print_none("Installed version of %s is '%s'.\n", $name, "none");
+            }
+            _print_none("Requested version of %s is '%s'.\n", $name, $version);
+            _print_none("Achieved version of %s is '%s'.\n", $name, $config["version"]);
         }
     }
 }
+function getto_package_installed_info($name) {
+    global $CONF_LOCK_FILE;
+    if (!is_file($CONF_LOCK_FILE)) {
+        return null;
+    }
+    return getto_conf_parse_file($CONF_LOCK_FILE);
+}
 
+function getto_conf_dig($conf, $key) {
+    $conf = (array) $conf;
+}
 function getto_conf_parse($file) {
     if (strrpos($file, ".conf")) {
         return getto_conf_parse_file($file);
@@ -200,11 +222,11 @@ function getto_conf_parse_local() {
     global $CONF, $CONF_FILE;
     if (empty($CONF)) {
         $CONF = getto_conf_parse_file($CONF_FILE);
-        if (!isset($CONF["@import"]["name"])) {
-            _print_warn("'@import.name' field is not found in configration file.\n");
+        if (!isset($CONF["import"]["name"])) {
+            _print_warn("'import.name' field is not found in configration file.\n");
         }
-        if (!isset($CONF["@import"]["link"])) {
-            _print_warn("'@import.link' field is not found in configration file.\n");
+        if (!isset($CONF["import"]["link"])) {
+            _print_warn("'import.link' field is not found in configration file.\n");
         }
     }
     return $CONF;
@@ -219,19 +241,18 @@ function getto_conf_parse_file($file) {
     if (!is_file($file)) {
         _print_fail("Configration file not found! file: '%s'.\n", 1, $file);
     }
-    function _lines($file) {
-        $lines = file($file, FILE_IGNORE_NEW_LINES);
-        $lines = array_map(function($line) {
-            return preg_replace("~^#([^\r\n]*)~", "", trim($line));
-        }, $lines);
-        return array_values(array_filter($lines));
-    }
     $conf = array();
-    $lines = _lines($file);
+    $lines = getto_conf_parse_file_lines($file);
     $lines_length = count($lines);
     foreach ($lines as $i => $line) {
         if ($line[0] == "@") {
-            $conf[$line] = array();
+            if (substr($line, -2) == "[]") {
+                $conf_i = 0;
+                $conf_key = trim($line, "@[]");
+                if (!isset($conf[$conf_key][$conf_i])) {
+                    $conf[$conf_key][$conf_i] = array();
+                }
+            }
             for ($ii = $i + 1; $line_next =@ $lines[$ii]; $ii++) {
                 if ($line_next[0] == "@") {
                     break;
@@ -239,12 +260,20 @@ function getto_conf_parse_file($file) {
                 @list($key, $value) =
                     array_map("trim", explode("=", $line_next, 2));
                 if (isset($key, $value)) {
-                    $conf[$line][$key] = $value;
+                    $conf[$conf_key][$conf_i][$key] = trim($value, "\"'");
                 }
             }
+            $conf_i++;
         }
     }
     return $conf;
+}
+function getto_conf_parse_file_lines($file) {
+    $lines = file($file, FILE_IGNORE_NEW_LINES);
+    $lines = array_map(function($line) {
+        return preg_replace("~^#([^\r\n]*)~", "", trim($line));
+    }, $lines);
+    return array_values(array_filter($lines));
 }
 
 # util
@@ -272,6 +301,9 @@ function _printr(...$args) {
     }
     _print(vsprintf($form, $args));
 }
+function _print_none($form, ...$args) {
+    _print(vsprintf($form, $args));
+}
 function _print_fail($form, $e = -1, ...$args) {
     _print(vsprintf(TEXT_COLOR_RED . $form . TEXT_NONE, $args));
     if ($e > -1) {
@@ -280,4 +312,7 @@ function _print_fail($form, $e = -1, ...$args) {
 }
 function _print_warn($form, ...$args) {
     _print(vsprintf(TEXT_COLOR_YELLOW . $form . TEXT_NONE, $args));
+}
+function _print_success($form, ...$args) {
+    _print(vsprintf(TEXT_COLOR_GREEN . $form . TEXT_NONE, $args));
 }
