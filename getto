@@ -131,7 +131,8 @@ function getto_remote_zip_extract($zip) {}
 function getto_install_package_all() {
     $conf = getto_conf_get();
     _print($conf);
-    $url = _dig($conf, "link");
+    $url = _dig($conf, "@import.link");
+    var_dump($url);
 }
 
 function getto_conf_get($key = null) {
@@ -162,7 +163,7 @@ function getto_conf_parse() {
     $lines_length = count($lines);
     foreach ($lines as $i => $line) {
         if ($line[0] == "@") {
-            $conf_key = trim($line, "@");
+            $conf_key = $line;
             $conf[$conf_key] = array();
             for ($ii = $i + 1; $line_next =@ $lines[$ii]; $ii++) {
                 if ($line_next[0] == "@") {
@@ -183,6 +184,11 @@ function getto_conf_parse() {
 function _dig(array $array, $key, $value = null) {
     if (isset($array[$key])) {
         $value = $array[$key];
+    } else {
+        $value =& $array;
+        foreach (explode(".", $key) as $key) {
+            $value =& $value[$key];
+        }
     }
     return $value;
 }
