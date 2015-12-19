@@ -132,6 +132,8 @@ function getto_install_package_all() {
     $conf = getto_conf_get();
     _print($conf);
     $url = _dig($conf, "@import.link");
+    if ($url == "") {
+    }
     var_dump($url);
 }
 
@@ -144,40 +146,40 @@ function getto_conf_get($key = null) {
 }
 function getto_conf_parse() {
     global $CONF;
-    if (!empty($CONF)) {
-        return $CONF;
-    }
-    if (!is_file(ROOT ."/getto.conf")) {
-        _print_fail("No configration found!\n", 1);
-    }
-    function _lines() {
-        $lines = file(ROOT ."/getto.conf", FILE_IGNORE_NEW_LINES);
-        $lines = array_map(function($line) {
-            return preg_replace("~^#([^\r\n]*)~", "", trim($line));
-        }, $lines);
-        $lines = array_values(array_filter($lines));
-        return $lines;
-    }
-    $conf = array();
-    $lines = _lines();
-    $lines_length = count($lines);
-    foreach ($lines as $i => $line) {
-        if ($line[0] == "@") {
-            $conf_key = $line;
-            $conf[$conf_key] = array();
-            for ($ii = $i + 1; $line_next =@ $lines[$ii]; $ii++) {
-                if ($line_next[0] == "@") {
-                    break;
-                }
-                @list($key, $value) =
-                    array_map("trim", explode("=", $line_next, 2));
-                if (isset($key, $value)) {
-                    $conf[$conf_key][$key] = $value;
+    if (empty($CONF)) {
+        if (!is_file(ROOT ."/getto.conf")) {
+            _print_fail("No configration found!\n", 1);
+        }
+        function _lines() {
+            $lines = file(ROOT ."/getto.conf", FILE_IGNORE_NEW_LINES);
+            $lines = array_map(function($line) {
+                return preg_replace("~^#([^\r\n]*)~", "", trim($line));
+            }, $lines);
+            $lines = array_values(array_filter($lines));
+            return $lines;
+        }
+        $lines = _lines();
+        $lines_length = count($lines);
+        foreach ($lines as $i => $line) {
+            if ($line[0] == "@") {
+                $CONF[$line] = array();
+                for ($ii = $i + 1; $line_next =@ $lines[$ii]; $ii++) {
+                    if ($line_next[0] == "@") {
+                        break;
+                    }
+                    @list($key, $value) =
+                        array_map("trim", explode("=", $line_next, 2));
+                    if (isset($key, $value)) {
+                        $CONF[$line][$key] = $value;
+                    }
                 }
             }
         }
+        if (!isset($CONF["@import"]["name"])) {
+            _print_warn("'@import.name' directive is not found in configration file.\n");
+        }
     }
-    return ($CONF = $conf);
+    return $CONF;
 }
 
 # util
@@ -210,4 +212,7 @@ function _print_fail($arg, $e = -1) {
     if ($e > -1) {
         exit($e);
     }
+}
+function _print_warn($arg) {
+    _print(TEXT_COLOR_YELLOW ."Warning: {$arg}". TEXT_NONE);
 }
