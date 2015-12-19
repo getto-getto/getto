@@ -146,7 +146,8 @@ function getto_conf_parse() {
     $lines_length = count($lines);
     foreach ($lines as $i => $line) {
         if ($line[0] == "@") {
-            $conf[$line] = array();
+            $conf_key = trim($line, "@");
+            $conf[$conf_key] = array();
             for ($ii = $i + 1; $line_next =@ $lines[$ii]; $ii++) {
                 if ($line_next[0] == "@") {
                     break;
@@ -154,7 +155,7 @@ function getto_conf_parse() {
                 @list($key, $value) =
                     array_map("trim", explode("=", $line_next, 2));
                 if (isset($key, $value)) {
-                    $conf[$line][$key] = $value;
+                    $conf[$conf_key][$key] = $value;
                 }
             }
         }
