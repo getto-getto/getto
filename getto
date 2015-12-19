@@ -22,12 +22,19 @@ if (PHP_SAPI != "cli") {
     _print_fail("Use only in CLI!\n", 1);
 }
 
-$argc = getto_argc();
-if ($argc < 2) {
+# args
+static $ARGV = array();
+static $ARGC = 0;
+$ARGV = getopt("i:u:r:c:h::v::", array("all", "self", "force",
+    "install", "update", "remove", "check", "help", "version"));
+$ARGC = count($ARGV);
+_print($ARGV);
+
+if (getto_argc() == 0) {
     _print_fail("No enough arguments given!\n", 1);
 }
 
-switch (getto_argv(1)) {
+switch (getto_argv(0)) {
     case "-i":
     case "--install":
         getto_run_install();
@@ -37,7 +44,7 @@ switch (getto_argv(1)) {
         getto_run_help();
         break;
     case "-v":
-    case "-version":
+    case "--version":
         getto_run_version();
         break;
     default:
@@ -46,14 +53,21 @@ switch (getto_argv(1)) {
 
 # arg stuff
 function getto_argc() {
-    if (isset($GLOBALS["argc"])) {
-        return $GLOBALS["argc"];
-    }
-    return 0;
+    global $ARGC;
+    return $ARGC;
 }
 function getto_argv($i) {
-    if (isset($GLOBALS["argv"][$i])) {
-        return $GLOBALS["argv"][$i];
+    if (is_int($i)) {
+        $argv = $GLOBALS["argv"];
+        array_shift($argv);
+        if (isset($argv[$i])) {
+            return $argv[$i];
+        }
+        return null;
+    }
+    global $ARGV;
+    if (isset($ARGV[$i])) {
+        return $ARGV[$i];
     }
     return null;
 }
@@ -62,22 +76,27 @@ function getto_argv($i) {
 function getto_run_help() {
     _print("
 --- Usage
-    getto -option [--extra-option]
-    getto -option [@package [-sub-option 'value']] | [--extra-option]
+    getto -option [--extra-option, [, --extra-option]]
+    getto -option [@package | '@package @version'] | [--extra-option, [, --extra-option]]
 
 --- Options
-    -i, --install   Install (a, all) package(s).
-    -c, --check     Check (a, all) package(s) for newer version(s).
-    -u, --update    Update (a, all) package(s).
+    -i, --install   Install package(s).
+    -u, --update    Update package(s).
     -r, --remove    Update a package.
+    -c, --check     Check package(s) for newer version(s).
     -h, --help      Display help.
     -v, --version   Print version.
+
+--- Extra Options
+    --all           Install, update or check all.
+    --self          Update Getto.
+    --force         Force to overwrite on current package even same version.
 
 --- Examples
     # install
     getto -i --all
     getto -i phpunit/phpunit
-    getto -i phpunit/phpunit -v '3.0'
+    getto -i 'phpunit/phpunit 3.0'
     # check
     getto -c --all
     getto -c --self
