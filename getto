@@ -178,6 +178,7 @@ function getto_install_package_all() {
         $config_file = getto_remote_conf($config_url);
         if ($config_file != "") {
             $config = getto_conf_parse($config_file);
+            var_dump($config);
         }
     }
 }
@@ -186,13 +187,15 @@ function getto_conf_parse($file, $global = false) {
     if (!is_file($file)) {
         _print_fail("No configration found!\n", 1);
     }
-    if (strrpos($file, ".json")) {
-        return json_decode(file_get_contents($file), true);
+    if (strrpos($file, ".conf")) {
+        return getto_conf_parse_file($file);
+    } elseif (strrpos($file, ".json")) {
+        return getto_conf_parse_json($file);
     }
     if ($global) {
         global $CONF;
         if (empty($CONF)) {
-            $CONF = getto_conf_parse_parse($file);
+            $CONF = getto_conf_parse_file($file);
             if (!isset($CONF["@import"]["name"])) {
                 _print_warn("'@import.name' field is not found in configration file.\n");
             }
@@ -203,17 +206,16 @@ function getto_conf_parse($file, $global = false) {
         return $CONF;
     }
 }
-function getto_conf_parse_lines($file) {
-    $lines = file($file, FILE_IGNORE_NEW_LINES);
-    $lines = array_map(function($line) {
-        return preg_replace("~^#([^\r\n]*)~", "", trim($line));
-    }, $lines);
-    $lines = array_values(array_filter($lines));
-    return $lines;
-}
-function getto_conf_parse_parse($file) {
+function getto_conf_parse_file($file) {
+    function _lines($file) {
+        $lines = file($file, FILE_IGNORE_NEW_LINES);
+        $lines = array_map(function($line) {
+            return preg_replace("~^#([^\r\n]*)~", "", trim($line));
+        }, $lines);
+        return array_values(array_filter($lines));
+    }
     $conf = array();
-    $lines = getto_conf_parse_lines($file);
+    $lines = _lines($file);
     $lines_length = count($lines);
     foreach ($lines as $i => $line) {
         if ($line[0] == "@") {
@@ -231,6 +233,9 @@ function getto_conf_parse_parse($file) {
         }
     }
     return $conf;
+}
+function getto_conf_parse_json($file) {
+    return json_decode(file_get_contents($file), true);
 }
 
 # util
