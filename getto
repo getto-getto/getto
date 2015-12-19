@@ -39,6 +39,10 @@ if ($argc < 2) {
 }
 
 switch (getto_argv(1)) {
+    case "-i":
+    case "--install":
+        getto_run_install();
+        break;
     case "-h":
     case "--help":
         getto_run_help();
@@ -48,7 +52,7 @@ switch (getto_argv(1)) {
         getto_run_version();
         break;
     default:
-        // help
+        // fail!
 }
 
 # arg stuff
