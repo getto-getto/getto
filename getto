@@ -22,13 +22,13 @@ if (PHP_SAPI != "cli") {
 
 $args_map = array(
     "-i" => array("--install",
-        "options" => array("--version", "--all")),
+        "options" => array("@src", "--version", "--all")),
     "-r" => array("--remove",
-        "options" => array("--version", "--all")),
+        "options" => array("@src", "--version", "--all")),
     "-c" => array("--check",
-        "options" => array("--all", "--self")),
+        "options" => array("@src", "--all", "--self")),
     "-u" => array("--update",
-        "options" => array("--all", "--self")),
+        "options" => array("@src", "--all", "--self")),
     "-h" => array("--help"),
     "-v" => array("--version"),
 );
