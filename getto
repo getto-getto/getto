@@ -152,7 +152,7 @@ function getto_remote_conf($url) {
         curl_setopt($ch, CURLOPT_USERAGENT, "Getto/v". VERSION);
         $result = curl_exec($ch);
         if ($result === false) {
-            _print_fail("cURL: %s, %s\n", -1, curl_errno($ch), curl_error($ch));
+            _print_fail("cURL fail: %s, %s\n", -1, curl_errno($ch), curl_error($ch));
         } else {
             $result = $tp;
         }
