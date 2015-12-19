@@ -184,6 +184,7 @@ function getto_install_package_all() {
                 _print_fail("Could not get composer.json from %s\n", -1, $name);
                 _print_fail("Skipping...\n");
             }
+            var_dump($config);
         }
     }
 }
