@@ -123,12 +123,15 @@ function getto_run_version() {
 }
 
 # https://github.com/<NAMESPACE>/<NAME>/archive/<BRANCH [master, 3.1.0, ...]>.zip
-function getto_zip_get($url) {}
-function getto_zip_extract($zip) {}
+function getto_remote_zip_get($url) {
+
+}
+function getto_remote_zip_extract($zip) {}
 
 function getto_install_package_all() {
     $conf = getto_conf_get();
     _print($conf);
+    $url = _dig($conf, "link");
 }
 
 function getto_conf_get($key = null) {
@@ -176,7 +179,13 @@ function getto_conf_parse() {
     return ($CONF = $conf);
 }
 
-# printers
+# util
+function _dig(array $array, $key, $value = null) {
+    if (isset($array[$key])) {
+        $value = $array[$key];
+    }
+    return $value;
+}
 function _print($arg) {
     fwrite(STDOUT, print_r($arg, true));
 }
