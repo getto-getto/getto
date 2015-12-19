@@ -22,6 +22,8 @@ if (PHP_SAPI != "cli") {
     _print_fail("Use only in CLI!\n", 1);
 }
 
+# conf
+static $CONF = array();
 # args
 static $ARGV = array();
 static $ARGC = 0;
@@ -125,10 +127,22 @@ function getto_zip_get($url) {}
 function getto_zip_extract($zip) {}
 
 function getto_install_package_all() {
-    $getto_conf = getto_conf_parse();
+    $conf = getto_conf_get();
+    _print($conf);
 }
 
+function getto_conf_get($key = null) {
+    $conf = getto_conf_parse();
+    if ($key === null) {
+        return $conf;
+    }
+    return isset($conf[$key]) ? $conf[$key] : null;
+}
 function getto_conf_parse() {
+    global $CONF;
+    if (!empty($CONF)) {
+        return $CONF;
+    }
     if (!is_file(ROOT ."/getto.conf")) {
         _print_fail("No configration found!\n", 1);
     }
@@ -142,7 +156,6 @@ function getto_conf_parse() {
     }
     $conf = array();
     $lines = _lines();
-    _print($lines);
     $lines_length = count($lines);
     foreach ($lines as $i => $line) {
         if ($line[0] == "@") {
@@ -160,7 +173,7 @@ function getto_conf_parse() {
             }
         }
     }
-    _print($conf);
+    return ($CONF = $conf);
 }
 
 # printers
