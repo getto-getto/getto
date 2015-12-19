@@ -85,7 +85,7 @@ function getto_run_help() {
     -r, --remove    Update a package.
     -c, --check     Check package(s) for newer version(s).
     -h, --help      Display help.
-    -v, --version   Print version.
+    -v, --version   Display version.
 
 --- Extra Options
     --all           Install, update or check all.
@@ -110,9 +110,7 @@ function getto_run_help() {
 ");
 }
 function getto_run_version() {
-    _print("
-Version: ". VERSION ."
-");
+    _print("Getto/v". VERSION ."\n");
 }
 function getto_run_install() {}
 
@@ -134,9 +132,9 @@ function _printr(...$args) {
     }
     _print(vsprintf($form, $args));
 }
-function _print_fail($arg, $enum = -1) {
+function _print_fail($arg, $e = -1) {
     _print(TEXT_COLOR_RED ."Fail: {$arg}". TEXT_NONE);
-    if ($enum > -1) {
-        exit($enum);
+    if ($e > -1) {
+        exit($e);
     }
 }
