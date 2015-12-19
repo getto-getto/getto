@@ -3,20 +3,20 @@
 # root
 define('ROOT', getcwd());
 # version
-define("VERSION",             "1.0.0");
+define("VERSION", "1.0.0");
 # text styles
-define("TEXT_RESET",          "\e[0m");
-define("TEXT_BOLD",           "\e[1m");
-define("TEXT_COLOR_RED",      "\e[0;31m");
-define("TEXT_COLOR_GREEN",    "\e[0;32m");
-define("TEXT_COLOR_YELLOW",   "\e[0;33m");
+define("TEXT_NONE",         "\e[0m");
+define("TEXT_BOLD",         "\e[1m");
+define("TEXT_COLOR_RED",    "\e[0;31m");
+define("TEXT_COLOR_GREEN",  "\e[0;32m");
+define("TEXT_COLOR_YELLOW", "\e[0;33m");
 
 # header
 _print(TEXT_BOLD);
 _print("***********************************\n");
 _print("*** Getto [PHP Package Manager] ***\n");
 _print("***********************************\n");
-_print(TEXT_RESET);
+_print(TEXT_NONE);
 
 if (PHP_SAPI != "cli") {
     _print_fail("Use only in CLI!\n", 1);
@@ -116,7 +116,7 @@ function _printr(...$args) {
     _print(vsprintf($form, $args));
 }
 function _print_fail($arg, $enum = -1) {
-    _print(TEXT_COLOR_RED ."Fail: {$arg}". TEXT_RESET);
+    _print(TEXT_COLOR_RED ."Fail: {$arg}". TEXT_NONE);
     if ($enum > -1) {
         exit($enum);
     }
