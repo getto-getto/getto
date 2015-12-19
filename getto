@@ -10,6 +10,11 @@ define("TEXT_BOLD",         "\e[1m");
 define("TEXT_COLOR_RED",    "\e[0;31m");
 define("TEXT_COLOR_GREEN",  "\e[0;32m");
 define("TEXT_COLOR_YELLOW", "\e[0;33m");
+# source url's
+# https://github.com/<NAMESPACE>/raw/master/<SOURCE>.json
+# https://github.com/<NAMESPACE>/archive/<BRANCH [master, 3.1.0, ...]>.zip
+define("SRC_URL_ZIP_GITHUB",  "https://github.com/%s/archive/%s>.zip");
+define("SRC_URL_CONF_GITHUB", "https://github.com/%s/raw/master/%s.json");
 
 # header
 _print(TEXT_BOLD);
@@ -121,8 +126,23 @@ function getto_run_help() {
 function getto_run_version() {
     _print("Getto/v". VERSION ."\n");
 }
-
-# https://github.com/<NAMESPACE>/<NAME>/archive/<BRANCH [master, 3.1.0, ...]>.zip
+function getto_remote_ping($url) {
+    $tmp = tempnam("/tmp", "getto");
+    $ch = curl_init($url);
+    curl_setopt($ch, CURLOPT_FILE, $tmp);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 5);
+    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+    // curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    $result = curl_exec($ch);
+    if ($result === false) {
+        _print_fail("cURL: %s, %s\n", curl_errno($ch), curl_error($ch));
+    } else {
+        $result = file_get_contents($tmp);
+    }
+    curl_close($ch);
+    @unlink($tmp);
+    return $result;
+}
 function getto_remote_zip_get($url) {
 
 }
@@ -131,10 +151,11 @@ function getto_remote_zip_extract($zip) {}
 function getto_install_package_all() {
     $conf = getto_conf_get();
     _print($conf);
-    $url = _dig($conf, "@import.link");
-    if ($url == "") {
+    $link = _dig($conf, "@import.link");
+    # default github?
+    if ($link == "github.com") {
     }
-    var_dump($url);
+    var_dump($link);
 }
 
 function getto_conf_get($key = null) {
@@ -176,7 +197,7 @@ function getto_conf_parse() {
             }
         }
         if (!isset($CONF["@import"]["name"])) {
-            _print_warn("'@import.name' directive is not found in configration file.\n");
+            _print_warn("'@import.name' field is not found in configration file.\n");
         }
     }
     return $CONF;
