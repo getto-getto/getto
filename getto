@@ -126,6 +126,7 @@ function getto_run_help() {
 function getto_run_version() {
     _print("Getto/v". VERSION ."\n");
 }
+
 function getto_remote_ping($url) {
     $tmp = tempnam("/tmp", "getto");
     $ch = curl_init($url);
@@ -198,6 +199,9 @@ function getto_conf_parse() {
         }
         if (!isset($CONF["@import"]["name"])) {
             _print_warn("'@import.name' field is not found in configration file.\n");
+        }
+        if (!isset($CONF["@import"]["link"])) {
+            _print_warn("'@import.link' field is not found in configration file.\n");
         }
     }
     return $CONF;
