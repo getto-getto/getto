@@ -70,14 +70,13 @@ function getto_argv($i) {
 
 # run stuff
 function getto_run_help() {
-    $output = <<<OUTPUT
+    _print("
 Usage: getto -option [, --extra-option]
-       getto -option [, library [, --sub-option]] [, --extra-option]
-OUTPUT;
-    _print("{$output}\n");
+       getto -option [, library [, --sub-option]] [, --extra-option]\n");
 }
 function getto_run_version() {
-    _print("Version: ". VERSION ."\n");
+    _print("
+Version: ". VERSION ."\n");
 }
 
 # https://github.com/<NAMESPACE>/<NAME>/archive/<BRANCH [master, 3.1.0, ...]>.zip
