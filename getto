@@ -11,10 +11,10 @@ define("TEXT_COLOR_RED",    "\e[0;31m");
 define("TEXT_COLOR_GREEN",  "\e[0;32m");
 define("TEXT_COLOR_YELLOW", "\e[0;33m");
 # source url's
-# https://github.com/<NAMESPACE>/raw/master/<SOURCE>.json
+# https://raw.githubusercontent.com/%s/master/<SOURCE.[conf,json]>
 # https://github.com/<NAMESPACE>/archive/<BRANCH [master, 3.1.0, ...]>.zip
 define("SRC_URL_ZIP_GITHUB",  "https://github.com/%s/archive/%s>.zip");
-define("SRC_URL_CONF_GITHUB", "https://github.com/%s/raw/master/%s.json");
+define("SRC_URL_CONF_GITHUB", "https://raw.githubusercontent.com/%s/master/%s");
 
 # header
 _print(TEXT_BOLD);
@@ -29,6 +29,7 @@ if (PHP_SAPI != "cli") {
 
 # conf
 static $CONF = array();
+static $CONF_FILE = ROOT ."/getto.conf";
 # args
 static $ARGV = array();
 static $ARGC = 0;
@@ -127,21 +128,37 @@ function getto_run_version() {
     _print("Getto/v". VERSION ."\n");
 }
 
-function getto_remote_ping($url) {
-    $tmp = tempnam("/tmp", "getto");
-    $ch = curl_init($url);
-    curl_setopt($ch, CURLOPT_FILE, $tmp);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 5);
-    curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-    // curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    $result = curl_exec($ch);
-    if ($result === false) {
-        _print_fail("cURL: %s, %s\n", curl_errno($ch), curl_error($ch));
-    } else {
-        $result = file_get_contents($tmp);
+function getto_remote_url($url, $url_for, $repo_name, $repo_conf) {
+    if ($url_for == "conf") {
+        if ($repo_conf == "") {
+            $repo_conf = "getto.conf";
+        }
+        return sprintf(SRC_URL_CONF_GITHUB, $repo_name, $repo_conf);
     }
-    curl_close($ch);
-    @unlink($tmp);
+}
+function getto_remote_conf($url) {
+    $result = null;
+    $tp = sprintf("/tmp/getto_%s.%s", md5($url), basename($url));
+    // return $tp;
+    if (!is_file($tp)) {
+        touch($tp);
+    }
+    $fp = fopen($tp, "w+");
+    if ($tp && $fp) {
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_FILE, $fp);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 300);
+        curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+        curl_setopt($ch, CURLOPT_USERAGENT, "Getto/v". VERSION);
+        $result = curl_exec($ch);
+        if ($result === false) {
+            _print_fail("cURL: %s, %s\n", -1, curl_errno($ch), curl_error($ch));
+        } else {
+            $result = $tp;
+        }
+        curl_close($ch);
+        fclose($fp);
+    }
     return $result;
 }
 function getto_remote_zip_get($url) {
@@ -150,65 +167,74 @@ function getto_remote_zip_get($url) {
 function getto_remote_zip_extract($zip) {}
 
 function getto_install_package_all() {
-    $conf = getto_conf_get();
-    _print($conf);
+    global $CONF_FILE;
+    $conf = getto_conf_parse($CONF_FILE, true);
+    var_dump($conf);
+    $name = _dig($conf, "@import.name");
     $link = _dig($conf, "@import.link");
-    # default github?
-    if ($link == "github.com") {
+    $config = _dig($conf, "@import.config");
+    if ($config == "composer.json") {
+        $config_url = getto_remote_url($link, "conf", $name, "composer.json");
+        $config_file = getto_remote_conf($config_url);
+        if ($config_file != "") {
+            $config = getto_conf_parse($config_file);
+        }
     }
-    var_dump($link);
 }
 
-function getto_conf_get($key = null) {
-    $conf = getto_conf_parse();
-    if ($key === null) {
-        return $conf;
+function getto_conf_parse($file, $global = false) {
+    if (!is_file($file)) {
+        _print_fail("No configration found!\n", 1);
     }
-    return isset($conf[$key]) ? $conf[$key] : null;
+    if (strrpos($file, ".json")) {
+        return json_decode(file_get_contents($file), true);
+    }
+    if ($global) {
+        global $CONF;
+        if (empty($CONF)) {
+            $CONF = getto_conf_parse_parse($file);
+            if (!isset($CONF["@import"]["name"])) {
+                _print_warn("'@import.name' field is not found in configration file.\n");
+            }
+            if (!isset($CONF["@import"]["link"])) {
+                _print_warn("'@import.link' field is not found in configration file.\n");
+            }
+        }
+        return $CONF;
+    }
 }
-function getto_conf_parse() {
-    global $CONF;
-    if (empty($CONF)) {
-        if (!is_file(ROOT ."/getto.conf")) {
-            _print_fail("No configration found!\n", 1);
-        }
-        function _lines() {
-            $lines = file(ROOT ."/getto.conf", FILE_IGNORE_NEW_LINES);
-            $lines = array_map(function($line) {
-                return preg_replace("~^#([^\r\n]*)~", "", trim($line));
-            }, $lines);
-            $lines = array_values(array_filter($lines));
-            return $lines;
-        }
-        $lines = _lines();
-        $lines_length = count($lines);
-        foreach ($lines as $i => $line) {
-            if ($line[0] == "@") {
-                $CONF[$line] = array();
-                for ($ii = $i + 1; $line_next =@ $lines[$ii]; $ii++) {
-                    if ($line_next[0] == "@") {
-                        break;
-                    }
-                    @list($key, $value) =
-                        array_map("trim", explode("=", $line_next, 2));
-                    if (isset($key, $value)) {
-                        $CONF[$line][$key] = $value;
-                    }
+function getto_conf_parse_lines($file) {
+    $lines = file($file, FILE_IGNORE_NEW_LINES);
+    $lines = array_map(function($line) {
+        return preg_replace("~^#([^\r\n]*)~", "", trim($line));
+    }, $lines);
+    $lines = array_values(array_filter($lines));
+    return $lines;
+}
+function getto_conf_parse_parse($file) {
+    $conf = array();
+    $lines = getto_conf_parse_lines($file);
+    $lines_length = count($lines);
+    foreach ($lines as $i => $line) {
+        if ($line[0] == "@") {
+            $conf[$line] = array();
+            for ($ii = $i + 1; $line_next =@ $lines[$ii]; $ii++) {
+                if ($line_next[0] == "@") {
+                    break;
+                }
+                @list($key, $value) =
+                    array_map("trim", explode("=", $line_next, 2));
+                if (isset($key, $value)) {
+                    $conf[$line][$key] = $value;
                 }
             }
         }
-        if (!isset($CONF["@import"]["name"])) {
-            _print_warn("'@import.name' field is not found in configration file.\n");
-        }
-        if (!isset($CONF["@import"]["link"])) {
-            _print_warn("'@import.link' field is not found in configration file.\n");
-        }
     }
-    return $CONF;
+    return $conf;
 }
 
 # util
-function _dig(array $array, $key, $value = null) {
+function _dig(array $array = null, $key, $value = null) {
     if (isset($array[$key])) {
         $value = $array[$key];
     } else {
@@ -232,12 +258,12 @@ function _printr(...$args) {
     }
     _print(vsprintf($form, $args));
 }
-function _print_fail($arg, $e = -1) {
-    _print(TEXT_COLOR_RED ."Fail: {$arg}". TEXT_NONE);
+function _print_fail($form, $e = -1, ...$args) {
+    _print(vsprintf(TEXT_COLOR_RED ."Fail: {$form}". TEXT_NONE, $args));
     if ($e > -1) {
         exit($e);
     }
 }
-function _print_warn($arg) {
-    _print(TEXT_COLOR_YELLOW ."Warning: {$arg}". TEXT_NONE);
+function _print_warn($form, ...$args) {
+    _print(vsprintf(TEXT_COLOR_YELLOW ."Warning: {$form}". TEXT_NONE, $args));
 }
