@@ -2,7 +2,7 @@
 <?php
 # version
 define("VERSION",             "1.0.0");
-# text stuff
+# text styles
 define("TEXT_RESET",          "\e[0m");
 define("TEXT_BOLD",           "\e[1m");
 define("TEXT_COLOR_RED",      "\e[0;31m");
