@@ -145,15 +145,9 @@ function getto_conf_parse() {
     _print($lines);
     $lines_length = count($lines);
     foreach ($lines as $i => $line) {
-        if ($line[0] == "") {
-            continue;
-        }
         if ($line[0] == "@") {
             $conf[$line] = array();
             for ($ii = $i + 1; $line_next =@ $lines[$ii]; $ii++) {
-                if ($line_next[0] == "") {
-                    continue;
-                }
                 if ($line_next[0] == "@") {
                     break;
                 }
