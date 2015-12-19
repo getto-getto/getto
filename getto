@@ -31,7 +31,7 @@ $ARGC = count($ARGV);
 _print($ARGV);
 
 if (getto_argc() == 0) {
-    _print_fail("No enough arguments given!\n", 1);
+    _print_fail("No enough arguments!\n", 1);
 }
 
 switch (getto_argv(0)) {
@@ -73,6 +73,13 @@ function getto_argv($i) {
 }
 
 # run stuff
+function getto_run_install() {
+    $package = getto_argv("i");
+    if ($package != "--all") {
+        return getto_install_package($package);
+    }
+    return getto_install_package_all();
+}
 function getto_run_help() {
     _print("
 --- Usage
@@ -112,11 +119,54 @@ function getto_run_help() {
 function getto_run_version() {
     _print("Getto/v". VERSION ."\n");
 }
-function getto_run_install() {}
 
 # https://github.com/<NAMESPACE>/<NAME>/archive/<BRANCH [master, 3.1.0, ...]>.zip
 function getto_zip_get($url) {}
 function getto_zip_extract($zip) {}
+
+function getto_install_package_all() {
+    $getto_conf = getto_conf_parse();
+}
+
+function getto_conf_parse() {
+    if (!is_file(ROOT ."/getto.conf")) {
+        _print_fail("No configration found!\n", 1);
+    }
+    function _lines() {
+        $lines = file(ROOT ."/getto.conf", FILE_IGNORE_NEW_LINES);
+        $lines = array_map(function($line) {
+            return preg_replace("~^#([^\r\n]*)~", "", trim($line));
+        }, $lines);
+        $lines = array_values(array_filter($lines));
+        return $lines;
+    }
+    $conf = array();
+    $lines = _lines();
+    _print($lines);
+    $lines_length = count($lines);
+    foreach ($lines as $i => $line) {
+        if ($line[0] == "") {
+            continue;
+        }
+        if ($line[0] == "@") {
+            $conf[$line] = array();
+            for ($ii = $i + 1; $line_next =@ $lines[$ii]; $ii++) {
+                if ($line_next[0] == "") {
+                    continue;
+                }
+                if ($line_next[0] == "@") {
+                    break;
+                }
+                @list($key, $value) =
+                    array_map("trim", explode("=", $line_next, 2));
+                if (isset($key, $value)) {
+                    $conf[$line][$key] = $value;
+                }
+            }
+        }
+    }
+    _print($conf);
+}
 
 # printers
 function _print($arg) {
