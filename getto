@@ -371,7 +371,6 @@ function getto_conf_parse_file($file) {
     };
     $conf = array();
     $lines = getto_conf_parse_file_lines($file);
-    $lines_length = count($lines);
     foreach ($lines as $i => $line) {
         if ($line[0] == "@") {
             $conf_i = 0;
