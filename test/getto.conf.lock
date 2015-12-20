@@ -1,7 +1,3 @@
-@project
-    name        = Getto!
-    version     = 1.0.0
-    description = Lorem ipsum dolor
 @depend
     php         = 5.3.0
     php-curl    = *
