@@ -358,7 +358,7 @@ function getto_conf_parse_file($file) {
             $json .= $value;
             if ($value_char_last != "]" && $value_char_last != "}"
                 && !is_numeric($value_char_last)
-                && !in_array(substr($value, -4), array("null","true","false"))
+                && !in_array(substr($value, -4), array("null","true"))
                 && !in_array(substr($value, -5), array("false"))
             ) {
                 $json .= "\"";
