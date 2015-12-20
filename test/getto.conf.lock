@@ -1,6 +1,17 @@
-@import
-    name      = qeremy/router
-    link      = github.com
-    version   = master
-    config    = composer.json
-    # depends.0 =
+@project
+    name        = Getto!
+    version     = 1.0.0
+    description = Lorem ipsum dolor
+@depend
+    php         = 5.3.0
+    php-curl    = *
+@import[]
+    name        = qeremy/router
+    link        = github.com
+    version     = master
+    config      = composer.json
+    -
+    name        = qeremy/couch
+    link        = github.com
+    version     = master
+    config      = composer.json
