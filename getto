@@ -31,6 +31,7 @@ if (PHP_SAPI != "cli") {
 static $CONF = array();
 static $CONF_FILE = ROOT ."/getto.conf";
 static $CONF_LOCK_FILE = ROOT ."/getto.conf.lock";
+static $CONF_LOCK_FILE_BAK = ROOT ."/getto.conf.lock~";
 # args
 static $ARGV = array();
 static $ARGC = 0;
@@ -168,20 +169,32 @@ function getto_remote_zip_get($url) {
 function getto_remote_zip_extract($zip) {}
 
 function getto_package_install($name) {
-    var_dump($name);
-}
-function getto_package_install_all() {
+    $data = json_decode('{
+    "name": "qeremy/router",
+    "type": "library",
+    "version": "1.5",
+    "homepage": "http://github.com/qeremy/router",
+    "description": "Routing crazy with PHP..",
+    "keywords": ["route", "router", "routing"],
+    "license": "The MIT License (MIT)",
+    "authors": [{
+        "name": "Kerem Gunes",
+        "email": "qeremy@gmail.com",
+        "homepage": "http://qeremy.com"
+    }],
+    "require": {
+        "php": ">=5.4.0"
+    }
+}',1);
+    getto_conf_unparse($data);
+    die("...\n");
     $conf = getto_conf_parse_local();
-    _print($conf);
-    return;
-    # put foreach here and call in getto_package_install()
-    $name = _dig($conf, "import.name");
-    $link = _dig($conf, "import.link");
-    $config = _dig($conf, "import.config");
-    $version = _dig($conf, "import.version", "master");
+    $link = _arr_dig($conf, "import.link");
+    $config = _arr_dig($conf, "import.config");
+    $version = _arr_dig($conf, "import.version", "master");
     if ($config == "composer.json") { # remove this control, automatize
         $config_url = getto_remote_url($link, "conf", $name, "composer.json");
-        _print_success("Getting remove configration from '%s'...\n", $config_url);
+        _print_success("Getting remove configration from %s...\n", $config_url);
         $config_file = getto_remote_conf($config_url);
         if ($config_file != null) {
             $config = getto_conf_parse($config_file);
@@ -190,14 +203,30 @@ function getto_package_install_all() {
                 _print_fail("Skipping...\n");
             }
             $info = getto_package_installed_info($name);
-            if ($version = _dig($info, "import.version")) {
-                _print_none("Installed version of %s is '%s'.\n", $name, $version);
+            if ($version = _arr_dig($info, "import.version")) {
+                _print_none("Installed version of %s is %s.\n", $name, $version);
             } else {
-                _print_none("Installed version of %s is '%s'.\n", $name, "none");
+                _print_none("Installed version of %s is %s.\n", $name, "none");
             }
-            _print_none("Requested version of %s is '%s'.\n", $name, $version);
-            _print_none("Achieved version of %s is '%s'.\n", $name, $config["version"]);
+            _print_none("Requested version of %s is %s.\n", $name, $version);
+            _print_none("Achieved version of %s is %s.\n", $name, $config["version"]);
         }
+    }
+}
+function getto_package_install_all() {
+    $conf = getto_conf_parse_local();
+    if (!isset($conf["import"])) {
+        _print_fail("import field is not found in local configration file.\n", 1);
+    }
+    # put foreach here and call in getto_package_install()
+    foreach ($conf["import"] as $i => $import) {
+        if (!isset($import["name"])) {
+            _print_fail("import[{$i}]: import.name field is not found in configration file.\n", 1);
+        }
+        if (!isset($import["link"])) {
+            _print_fail("import[{$i}]: import.link field is not found in configration file.\n", 1);
+        }
+        getto_package_install($import["name"]);
     }
 }
 function getto_package_installed_info($name) {
@@ -208,7 +237,7 @@ function getto_package_installed_info($name) {
     return getto_conf_parse_file($CONF_LOCK_FILE);
 }
 
-function getto_conf_dig($conf, $key) {
+function getto_conf_arr_dig($conf, $key) {
     $conf = (array) $conf;
 }
 function getto_conf_parse($file) {
@@ -218,28 +247,87 @@ function getto_conf_parse($file) {
         return getto_conf_parse_json($file);
     }
 }
+function getto_conf_unparse($conf) {
+    global $CONF_LOCK_FILE, $CONF_LOCK_FILE_BAK;
+    if (!copy($CONF_LOCK_FILE, $CONF_LOCK_FILE_BAK)) {
+        _print_fail("Fail while writing backup lock file!\n", 1);
+    }
+    $conf = getto_conf_parse_local(); # tmp
+    $data = array();
+    $_version = function($version) {
+        if ($version == "*") {
+            return $version;
+        }
+        preg_match("~(?P<operator>[^\d ]+)?\s*
+            (?P<version>(?P<major>\d+|\*)(?:.(?P<minor>\d+|\*))?(?:.(?P<patch>\d+|\*))?(?:-(?P<part>.+))?)
+        ~x", $version, $version);
+        foreach ($version as $key => $_) {
+            if (is_int($key)) {
+                unset($version[$key]);
+            }
+        }
+        // _print($version);
+        return _arr_fill($version, "", "operator", "major", "minor", "patch", "part");
+    };
+    // $data["name"] = _arr_dig($conf, "name");
+    if (isset($conf["depend"])) {
+        foreach ($conf["depend"] as $name => $version) {
+            $compare = null;
+            $version = $_version($version);
+            if ($version == "*") {
+                $compare = extension_loaded(substr($name, 4));
+            } else {
+                _print($version);
+                $v = "5.6.0";
+                if ($name == "php") {
+                    $v = PHP_VERSION;
+                } else {
+                    $v = phpversion(substr($name, 4));
+                }
+                if ($version["operator"] == "") {
+                    $compare = version_compare($v, $version["version"]);
+                } else {
+                    if ($version["operator"] == "~") {
+                        $compare = version_compare($v, ($version["major"].".".$version["minor"]), ">=")
+                               && version_compare($v, ($version["major"].".".($version["minor"] + 1)), "<");
+                    } elseif ($version["operator"] == "^") {
+                        $compare = version_compare($v, $version["major"].".*", ">=")
+                               && version_compare($v, ($version["major"] + 1).".*", "<");
+                    } else {
+                        $compare = version_compare($v, $version["version"], $version["operator"]);
+                    }
+                }
+                if ($compare === -1) {
+                    $compare = false;
+                } elseif ($compare === 1 || $compare === 0) {
+                    $compare = true;
+                }
+            }
+            if ($compare === null) {
+                _print_fail("Could not make version compare!\n", 1);
+            }
+            var_dump($compare);
+        }
+    }
+    file_put_contents($CONF_LOCK_FILE, $data);
+    unlink($CONF_LOCK_FILE_BAK);
+}
 function getto_conf_parse_local() {
     global $CONF, $CONF_FILE;
     if (empty($CONF)) {
         $CONF = getto_conf_parse_file($CONF_FILE);
-        if (!isset($CONF["import"]["name"])) {
-            _print_warn("'import.name' field is not found in configration file.\n");
-        }
-        if (!isset($CONF["import"]["link"])) {
-            _print_warn("'import.link' field is not found in configration file.\n");
-        }
     }
     return $CONF;
 }
 function getto_conf_parse_json($file) {
     if (!is_file($file)) {
-        _print_fail("Configration file not found! file: '%s'.\n", 1, $file);
+        _print_fail("Configration file not found! file: %s.\n", 1, $file);
     }
     return json_decode(file_get_contents($file), true);
 }
 function getto_conf_parse_file($file) {
     if (!is_file($file)) {
-        _print_fail("Configration file not found! file: '%s'.\n", 1, $file);
+        _print_fail("Configration file not found! file: %s.\n", 1, $file);
     }
     $_key = function($key) { return trim($key, " @[]{}"); };
     $_value = function($value) { return trim($value, " \"\',"); };
@@ -314,7 +402,7 @@ function getto_conf_parse_file_lines($file) {
 }
 
 # util
-function _dig(array $array = null, $key, $value = null) {
+function _arr_dig(array $array = null, $key, $value = null) {
     if (isset($array[$key])) {
         $value = $array[$key];
     } else {
@@ -324,6 +412,14 @@ function _dig(array $array = null, $key, $value = null) {
         }
     }
     return $value;
+}
+function _arr_fill(array $array, $value, ...$args) {
+    foreach ($args as $key) {
+        if (!isset($array[$key])) {
+            $array[$key] = "";
+        }
+    }
+    return $array;
 }
 function _print($arg) {
     fwrite(STDOUT, print_r($arg, true));
