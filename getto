@@ -186,9 +186,10 @@ function getto_package_install($name) {
         "php": ">=5.4.0"
     }
 }',1);
-    getto_conf_unparse($data);
-    die("...\n");
+    // getto_conf_unparse($data);
     $conf = getto_conf_parse_local();
+    _print($conf);
+    die("...\n");
     $link = _arr_dig($conf, "import.link");
     $config = _arr_dig($conf, "import.config");
     $version = _arr_dig($conf, "import.version", "master");
@@ -363,28 +364,31 @@ function getto_conf_parse_file($file) {
         if ($line[0] == "@") {
             $conf_i = 0;
             $conf_key = $_key($line);
-            $conf_array = false;
-            if (substr($line, -2) == "[]") {
-                $conf_array = true;
-                if (!isset($conf[$conf_key][$conf_i])) {
-                    $conf[$conf_key][$conf_i] = array();
-                }
-            } else {}
+            $conf_type = null;
+            $conf_ending = substr($line, -2);
+            if ($conf_ending == "[]") {
+                $conf_type = "array";
+            } elseif ($conf_ending == "{}") {
+                $conf_type = "object";
+            }
             for ($ii = $i + 1; $line_next =@ $lines[$ii]; $ii++) {
                 if ($line_next[0] == "@") {
                     break;
                 }
-                if ($line_next[0] == "-") {
-                    $conf_i++;
-                }
-                @list($key, $value) =
-                    array_map("trim", explode("=", $line_next, 2));
-                if (isset($key, $value)) {
-                    list($key, $value) = $_key_value($key, $value);
-                    if (!$conf_array) {
-                        $conf[$conf_key][$key] = $value;
-                    } else {
-                        $conf[$conf_key][$conf_i][$key] = $value;
+                if ($conf_type == null) {
+                    $conf[$conf_key] = $_value($line_next);
+                } elseif ($conf_type == "array" || $conf_type == "object") {
+                    if ($line_next[0] == "-") {
+                        $conf_i++;
+                    }
+                    @list($key, $value) = array_map("trim", explode("=", $line_next, 2));
+                    if (isset($key, $value)) {
+                        list($key, $value) = $_key_value($key, $value);
+                        if ($conf_type == "object") {
+                            $conf[$conf_key][$key] = $value;
+                        } elseif ($conf_type == "array") {
+                            $conf[$conf_key][$conf_i][$key] = $value;
+                        }
                     }
                 }
             }
