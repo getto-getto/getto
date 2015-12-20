@@ -371,6 +371,9 @@ function getto_conf_parse_file($file) {
     };
     $conf = array();
     $lines = getto_conf_parse_file_lines($file);
+    if (empty($lines)) {
+        return $conf;
+    }
     foreach ($lines as $i => $line) {
         if ($line[0] == "@") {
             $conf_i = 0;
@@ -410,10 +413,12 @@ function getto_conf_parse_file($file) {
 }
 function getto_conf_parse_file_lines($file) {
     $lines = file($file, FILE_IGNORE_NEW_LINES);
-    $lines = array_map(function($line) {
-        return preg_replace("~^#([^\r\n]*)~", "", trim($line));
-    }, $lines);
-    return array_values(array_filter($lines));
+    if (!empty($lines)) {
+        $lines = array_map(function($line) {
+            return preg_replace("~^#([^\r\n]*)~", "", trim($line));
+        }, $lines);
+        return array_values(array_filter($lines));
+    }
 }
 
 # util
