@@ -330,8 +330,20 @@ function getto_conf_parse_file($file) {
     if (!is_file($file)) {
         _print_fail("Configration file not found! file: %s.\n", 1, $file);
     }
-    $_key = function($key) { return trim($key, " @[]{}"); };
-    $_value = function($value) { return trim($value, " \"\',"); };
+    $_key = function($key) {
+        $key = trim($key, " @[]{}");
+        if ($key === "") {
+            $key = null;
+        }
+        return $key;
+    };
+    $_value = function($value) {
+        $value = trim($value, " \"\',");
+        if ($value === "") {
+            $value = null;
+        }
+        return $value;
+    };
     $_key_value = function($key, $value) use($_key, $_value) {
         $key_ending = substr($key, -2);
         $key = $_key($key);
