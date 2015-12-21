@@ -327,6 +327,7 @@ function getto_conf_parse_json($file) {
     return json_decode(file_get_contents($file), true);
 }
 function getto_conf_parse_file($file) {
+    $file = "./getto-strict.conf"; # @tmp
     if (!is_file($file)) {
         _print_fail("Configration file not found! file: %s.\n", 1, $file);
     }
@@ -337,35 +338,52 @@ function getto_conf_parse_file($file) {
         }
         return $key;
     };
-    $_value = function($value) {
-        $value = trim($value, " \"\',");
+    $_value = function($value, $strict = false) {
+        global $key;
+        $value = trim($value);
         if ($value === "") {
             $value = null;
         }
-        return $value;
+        if ($strict) {
+            if (is_numeric($value)) {
+                return (false === strpos($value, ".")) ? (int) $value : (float) $value;
+            } elseif ($value == "null") {
+                return null;
+            } elseif ($value == "true" || $value == "false") {
+                return ($value == "true");
+            } # else pass for string, json array, json object etc..
+        }
+        return trim($value, "\"");
     };
-    $_key_value = function($key, $value) use($_key, $_value) {
+    $_key_value = function($key, $value, $strict = false) use($_key, $_value) {
         $key_ending = substr($key, -2);
         $key = $_key($key);
-        $value = $_value($value);
-        $value_char_first = $value[0];
-        $value_char_last = substr($value, -1);
+        $value = $_value($value, $strict);
         if ($key_ending == "[]" || $key_ending == "{}") {
             $json = "";
-            if ($value_char_first != "[") {
+            $char_first = $value[0];
+            $char_last = substr($value, -1);
+            if ($char_first != "]" && $char_first != "}"
+                && !is_numeric($char_first)
+            ) {
                 $json .= "\"";
             }
             $json .= $value;
-            if ($value_char_last != "]" && $value_char_last != "}"
-                && !is_numeric($value_char_last)
+            if ($char_last != "]" && $char_last != "}"
+                && !is_numeric($char_last)
                 && !in_array(substr($value, -4), array("null","true"))
                 && !in_array(substr($value, -5), array("false"))
             ) {
                 $json .= "\"";
             }
-            $value = ($key_ending == "[]")
+            $json_value = ($key_ending == "[]")
                 ? json_decode("[{$json}]", true)
                 : json_decode("{{$json}}", true);
+            if (_json_error_code()) {
+                _print_fail("Invalid JSON value: %s%s = %s (%s)\n", 1,
+                    $key, $key_ending, $value, _json_error_text());
+            }
+            $value = $json_value;
         }
         return array($key, $value);
     };
@@ -373,6 +391,11 @@ function getto_conf_parse_file($file) {
     $lines = getto_conf_parse_file_lines($file);
     if (empty($lines)) {
         return $conf;
+    }
+    $strict = false;
+    if ($lines[0] == "\"strict\"") {
+        $strict = true;
+        unset($lines[0]);
     }
     foreach ($lines as $i => $line) {
         if ($line[0] == "@") {
@@ -390,14 +413,14 @@ function getto_conf_parse_file($file) {
                     break;
                 }
                 if ($conf_type == null) {
-                    $conf[$conf_key] = $_value($line_next);
+                    $conf[$conf_key] = $_key_value(null, $line_next, $strict)[1];
                 } elseif ($conf_type == "array" || $conf_type == "object") {
                     if ($line_next[0] == "-") {
                         $conf_i++;
                     }
                     @list($key, $value) = array_map("trim", explode("=", $line_next, 2));
                     if (isset($key, $value)) {
-                        list($key, $value) = $_key_value($key, $value);
+                        list($key, $value) = $_key_value($key, $value, $strict);
                         if ($conf_type == "object") {
                             $conf[$conf_key][$key] = $value;
                         } elseif ($conf_type == "array") {
@@ -440,6 +463,21 @@ function _arr_fill(array $array, $value, ...$args) {
         }
     }
     return $array;
+}
+function _json_error_code() {
+    return json_last_error();
+}
+function _json_error_text() {
+    static $errors = array(
+        JSON_ERROR_NONE           => null,
+        JSON_ERROR_DEPTH          => "Maximum stack depth exceeded",
+        JSON_ERROR_STATE_MISMATCH => "State mismatch (invalid or malformed JSON)",
+        JSON_ERROR_CTRL_CHAR      => "Unexpected control character found",
+        JSON_ERROR_SYNTAX         => "Syntax error, malformed JSON",
+        JSON_ERROR_UTF8           => "Malformed UTF-8 characters, possibly incorrectly encoded"
+    );
+    $error = _json_error_code();
+    return array_key_exists($error, $errors) ? $errors[$error] : "Unknown error ({$error})";
 }
 function _print($arg) {
     fwrite(STDOUT, print_r($arg, true));
