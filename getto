@@ -186,10 +186,7 @@ function getto_package_install($name) {
         "php": ">=5.4.0"
     }
 }',1);
-    // getto_conf_unparse($data);
-    $conf = getto_conf_parse_local();
-    _print($conf);
-    die("...\n");
+    $conf = getto_conf_unparse($data);
     $link = _arr_dig($conf, "import.link");
     $config = _arr_dig($conf, "import.config");
     $version = _arr_dig($conf, "import.version", "master");
@@ -308,6 +305,7 @@ function getto_conf_unparse($conf) {
                 _print_fail("Could not make version compare!\n", 1);
             }
             var_dump($compare);
+            # !!! here !!!
         }
     }
     file_put_contents($CONF_LOCK_FILE, $data);
